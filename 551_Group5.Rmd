@@ -1,0 +1,26 @@
+---
+title: "551 Case Study Group5"
+author: "Ethan Straub, Leila Naderi, Benjamin Fraizer"
+date: "2024-09-28"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introduction
+
+
+# Summary Statistics and Graphs
+
+```{r}
+data = read.csv("LPGA.csv")
+```
+
+
+
+# Analysis
+
+
+# Results and Conclusion
