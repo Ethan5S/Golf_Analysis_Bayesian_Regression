@@ -203,3 +203,9 @@ t = loo::kfold(f, K = 2, scale = NULL)
 
 
 # Results and Conclusion
+
+
+# Appendix: All code for this report
+
+```{r ref.label=knitr::all_labels(), echo=TRUE, eval=FALSE}
+```
