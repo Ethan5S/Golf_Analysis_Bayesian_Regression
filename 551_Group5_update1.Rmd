@@ -11,7 +11,12 @@ knitr::opts_chunk$set(echo = FALSE)
 
 # Introduction
 
-In the dataset, the only non-quantitative variable is the golfer's name. This variable won't be used in a model because each golfer has a unique name, and it doesn't make sense that a person's name impacts the amount of prize money that a golfer wins.
+In professional sports, understanding the factors that contribute to success is essential for athletes, coaches, and analysts. In the context of professional golf, performance metrics such as driving distance, putting efficiency, and accuracy in reaching greens are critical in determining a player's earnings. This study focuses on golfers in the Ladies Professional Golf Association (LPGA), with the goal of constructing a model to predict the prize money earned per round (przrnd). By analyzing several key performance metrics, this study aims to identify the predictors that have the greatest influence on a golfer's earnings.
+
+The response variable in this analysis is the prize money per round (przrnd), and several performance and experience-related predictors are considered. In this case study, all predictor variables are quantitative. The variables include the number of rounds played (rounds), average drive distance (avedist), percentage of fairways hit (pctfrwy), percentage of greens in regulation (pctgrn), average number of putts per round (aveputt), average sand shots per round (avesand), and sand save percentage (pctsndsv). The golfer's name (Golfer) is a categorical variable, but it is not used in the analysis as a predictor since it doesn’t affect the outcome. 
+
+The primary objective of this study is to develop a statistical model that explains the relationship between these performance variables and prize money earned. By identifying the most significant predictors, we can provide insights into which aspects of a golfer's game contribute most to their financial success. This information can be invaluable for golfers and their coaches in making data-driven decisions about training and strategy, allowing them to focus on areas that yield the greatest return on investment. Furthermore, this model may help golf analysts and enthusiasts better understand the factors that distinguish top performers in the LPGA.
+
 
 # Summary Statistics and Graphs
 
