@@ -1,0 +1,222 @@
+---
+title: "551 Case Study Group5"
+author: "Ethan Straub, Leila Naderi, Benjamin Fraizer"
+date: "2024-09-28"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+# Introduction
+
+In the dataset, the only non-quantitative variable is the golfer's name. This variable won't be used in a model because each golfer has a unique name, and it doesn't make sense that a person's name impacts the amount of prize money that a golfer wins.
+
+# Summary Statistics and Graphs
+
+```{r}
+library(ggcorrplot)
+library(ggplot2) 
+library(scales) 
+library(ggrepel) 
+df = read.csv("LPGA.csv")
+# Taking names out of the design matrix
+data = df[,-1]
+pairs(data)
+```
+
+```{r}
+#corMat = cor(data)
+#ggcorrplot(corMat)
+```
+
+From the pairs plot, we can see that the distribution of the response variable (Prize money per round) is highly skewed right. It may be a good idea to log transform this variable in a model. Log transforming will also make the pr
+
+There are no exceptionally strong relationships between variables, but there are a few noticeable trends. 
+
+Golfers who hit longer drives on average tend to hit the fairway less. This reflects the trade off between power and accuracy. It is easy to hit a ball far, and it is easy to hit a ball short with a good line. But it is difficult to hit it far and with the right line. We can create a variable that reflects a golfer's long game by multiplying these variables together after standardizing (to make the contribution from each variable the same).
+
+Average sand shots and percent green have a decently large negative correlation. Most sand traps in golf are close to the green. So if a golfer misses a lot of greens, it is likely that they hit sand traps instead.
+
+Here are some other relationships in the data that make intuitive sense. A better golfer who makes more money per round will generally have longer drives, more accurate fairway and green shots, less putts, hit less sand traps, and hit good shots from the sand. 
+
+Surprisingly, the highest correlation between two variables in the dataset is between number of rounds played and prize money per round. Perhaps the better golfers who make more money make it into more tournaments.
+
+
+
+```{r}
+przrnd = data$przrnd
+dta_temp = as.data.frame(scale(data[,c(1:7)]))
+dta_temp$longGame = dta_temp$avedist * dta_temp$pctfrwy
+dta_temp$roundsSquared = dta_temp$rounds^2
+std_designMat = as.data.frame(scale(dta_temp))
+
+corMat2 = cor(std_designMat)
+ggcorrplot(corMat2)
+```
+
+
+# Analysis
+
+```{r}
+# Functions
+
+suppressMessages(library(rstanarm))
+suppressMessages(library(bayesplot))
+suppressMessages(library(loo))
+
+fit = function(Y = przrnd, logY = TRUE, X = std_designMat, prior = "normal", scale = 2.5, p0 = 4){
+  fullMat = cbind(X, Y)
+  if(prior == "normal"){
+    if(logY == TRUE){
+    fit = stan_glm(log(Y) ~ . , data = fullMat, 
+                 prior=normal(scale=scale), refresh = 0)
+    }
+    else{
+    fit = stan_glm(Y ~ . , data = fullMat, 
+                prior=normal(scale=scale), refresh = 0)
+    }
+  }
+  else if(prior == "horseshoe"){
+    p = ncol(X)
+    n = nrow(X)
+    global_scale <- (p0/(p - p0))/sqrt(n)
+    if(logY == TRUE){
+    slab_scale <- sqrt(0.3/p0)*sd(log(fullMat$Y))
+    fit <- stan_glm(log(Y) ~ ., data=fullMat, refresh=0,
+    prior=hs(global_scale=global_scale,
+    slab_scale=slab_scale))
+    }
+    else{
+    slab_scale <- sqrt(0.3/p0)*sd(fullMat$Y)
+    fit <- stan_glm(Y ~ ., data=fullMat, refresh=0,
+    prior=hs(global_scale=global_scale,
+    slab_scale=slab_scale))
+    }
+  }
+  else{
+    print("spelling error on the prior")
+  }
+  return(fit)
+}
+
+plots = function(logY = TRUE, X = std_designMat, coefDist = TRUE, residFit = TRUE, Y = przrnd, prior = "normal", scale = 2.5, p0 = 4 ){
+  fit = fit(Y, logY, X, prior, scale, p0)
+  if(residFit == TRUE){
+    plot(fit$fitted.values, fit$residuals, xlab = "Fitted Values", 
+         ylab = "Residuals", abline(h=c(-sigma(fit), 0, sigma(fit)), lwd=3,
+                                    lty=c(2, 1, 2), col = "gray"), pch = 16)
+  }
+  if(coefDist == TRUE){
+    pt <- mcmc_areas(as.matrix(fit), pars=vars(-'(Intercept)',-sigma),
+                 prob_outer=0.95, area_method = "scaled height") +
+    xlim(c(-1.2,1.2))
+    pt <- pt + scale_y_discrete(limits = rev(levels(pt$data$parameter))) +        ggtitle("Posterior Distribution of Slopes")
+    pt
+  }
+}
+
+
+compare = function(Y = przrnd, logY = c(TRUE, TRUE), X = list(std_designMat, std_designMat[,c(2:8)]), prior = c("normal", "horseshoe"), scale = c(.25, 1), p0 = c(4,4), kf = FALSE, k = 5){
+  numModels = length(prior)
+  fit_list = vector("list", length = numModels)
+  for(i in 1:numModels){
+    fit = fit(Y, logY[i], X[[i]], prior[i], scale[i], p0[i])
+    fit_list[[i]] = fit
+  }
+  objList = vector("list", length = numModels)
+  if(kf == TRUE){
+    for(i in 1:numModels){
+      if(i == 1){
+        model_1 = fit_list[[i]]
+        objList[[i]] = rstanarm::kfold(model_1, K = k, scale = NULL)
+      }
+      if(i == 2){
+        model_2 = fit_list[[i]]
+        objList[[i]] = rstanarm::kfold(model_2, K = k, scale = NULL)
+      }
+      if(i == 3){
+        model_3 = fit_list[[i]]
+        objList[[i]] = rstanarm::kfold(model_3, K = k, scale = NULL)
+      }
+    }
+  }
+  else{
+    for(i in 1:numModels){
+      if(i == 1){
+        model_1 = fit_list[[i]]
+        objList[[i]] = loo(model_1)
+      }
+      if(i == 2){
+        model_2 = fit_list[[i]]
+        objList[[i]] = loo(model_2)
+      }
+      if(i == 3){
+        model_3 = fit_list[[i]]
+        objList[[i]] = loo(model_3)
+      }
+      if(i == 4){
+        model_4 = fit_list[[i]]
+        objList[[i]] = rstanarm::kfold(model_4, K = k, scale = NULL)
+      }
+    }
+  }
+  do.call(rstanarm::loo_compare, objList)
+}
+```
+
+
+```{r}
+suppressMessages(plots(X = std_designMat[,c(1:8)], logY = FALSE))
+
+
+```
+
+When using Y on the original scale, there is clear non-linearity of residuals in the residuals vs fitted plot, and the variance of every slope estimate is too large. Log transforming Y is definitely a better option.
+
+```{r}
+suppressMessages(plots(X = std_designMat[,c(1:8)], residFit = FALSE))
+```
+
+```{r}
+suppressMessages(plots(X = std_designMat[,c(2:9)], residFit = FALSE))
+```
+
+
+```{r}
+suppressMessages(plots(X = std_designMat[,c(1:8)], prior = "horseshoe", residFit = FALSE))
+```
+
+With a horseshoe prior using the rule of thumb parameters and using all of the predictors, the horseshoe prior keeps pctgrn, aveputt, and rounds and sets every other coefficient to be close to 0.
+
+```{r}
+suppressMessages(plots(X = std_designMat[,c(1:9)], prior = "horseshoe", residFit = FALSE))
+```
+
+```{r}
+#suppressMessages(compare(X = list(std_designMat, std_designMat[,c(1:8)], std_designMat[,c(1,4,5,9)], std_designMat[,c(1,4,5)]), prior = c("horseshoe", "horseshoe", "normal", "normal"), scale = c(0,0,2.5,2.5), p0 = c(4,4,4,3), logY = c(TRUE, TRUE, TRUE, TRUE)))
+```
+
+```{r}
+suppressMessages(compare(X = list(std_designMat, std_designMat[,c(1:8)], std_designMat[,c(1,4,5,9)]), prior = c("horseshoe", "horseshoe", "normal"), scale = c(0,0,2.5), p0 = c(4,4,4), logY = c(TRUE, TRUE, TRUE)))
+```
+```{r}
+suppressMessages(compare(X = list(std_designMat[,c(1,4,5,9)], std_designMat[,c(1,4,5)], std_designMat[,c(1,4,5,9)]), prior = c("normal", "normal", "normal"), scale = c(2.5,2.5,.25), p0 = c, logY = c(TRUE, TRUE, TRUE)))
+```
+```{r}
+suppressMessages(compare(X = list(std_designMat[,c(1,4,5,9)], std_designMat[,c(1,4,5,9)], std_designMat[,c(1,4,5,9)]), prior = c("normal", "normal", "normal"), scale = c(0.4,.25, .1), logY = c(TRUE, TRUE, TRUE)))
+```
+
+
+
+```{r}
+one = c(134,154,136, 143, 138, 151, 146, 128)
+two = c(125, 109, 109, 119, 130, 124, 127, 122)
+mean(one)
+mean(two)
+```
+
+
+
+# Results and Conclusion
