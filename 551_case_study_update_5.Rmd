@@ -2,9 +2,7 @@
 title: "551 Case Study Group5 update 3"
 author: "Ethan Straub, Leila Naderi, Benjamin Frazier"
 date: "2024-09-28"
-output:
-  pdf_document: default
-  word_document: default
+output: word_document
 ---
 
 ```{r setup, include=FALSE}
@@ -62,7 +60,7 @@ We also created a variable called roundsSquared which is rounds$^2$. Since round
 przrnd = data$przrnd
 dta_temp = as.data.frame(scale(data[,c(1:7)]))
 dta_temp$longGame = dta_temp$avedist * dta_temp$pctfrwy
-#dta_temp$roundsSquared = dta_temp$rounds^2
+dta_temp$roundsSquared = dta_temp$rounds^2
 std_designMat = as.data.frame(scale(dta_temp))
 
 #pairs(std_designMat)
@@ -242,10 +240,11 @@ suppressMessages(plots(X = std_designMat[,c(1:8)], logY = FALSE, residFit = FALS
 ```
 
 ```{r}
-suppressMessages(mypost_predic(X = std_designMat[,c(1:8)], logY = FALSE))
+
+#suppressMessages(mypost_predic(X = std_designMat[,c(1:8)], logY = FALSE))
 ```
 
-When using Y on the original scale, there is clear non-linearity of residuals in the residuals vs fitted plot, and the variance of every slope estimate is too large. Log transforming Y is definitely a better option.
+When using Y on the original scale, there is clear non-linearity of residuals in the residuals vs fitted plot, and the variance of every slope estimate is too large we also investigated at posterior prediction of the non-log transformed values which show very off predictions. Log transforming Y is definitely a better option.
 
 ```{r}
 # suppressMessages(plots(X = std_designMat[,c(2:9)], residFit = FALSE))
@@ -282,7 +281,10 @@ In this table, model 3 is the same as the previous table. Model 2 is the same as
 ```{r, warning = FALSE}
 fullMat = cbind(przrnd, std_designMat)
 model = stan_glm(log(przrnd) ~ rounds + aveputt + pctgrn, data = fullMat, refresh = 0, prior = normal(scale = 0.25))
-#print(model, digits = 2)
+print(model, digits = 2)
+
+
+
 ```
 
 ## Final Model: Log(Prize Money per Round) = 7.84 + 0.5(Standardized Number of Rounds) - 0.25(Standardized Number of Putts per Round) + 0.32(Standardized Percentage of Greens in Regulation)
@@ -290,6 +292,15 @@ model = stan_glm(log(przrnd) ~ rounds + aveputt + pctgrn, data = fullMat, refres
 
 # Results and Conclusion
 The Bayesian linear regression model was used to predict the log of prize money per round (`przrnd`) based on three key variables: the number of rounds played (`rounds`), the percentage of greens hit in regulation (`pctgrn`), and the average number of putts per round (`aveputt`). 
+
+$\beta_0$ = 7.84, which is the expected value of log(przrnd) where all rounds, aveputt and pctgrn are all zero.
+
+$\beta_1$ = 0.50, where a one standard deviation increase in $rounds$ is associated with approximately at 50% increase in $przrnd$.
+
+$\beta_2$ = -0.25, where a one standard deviation increase in $aveputt$ is associated with approximately at 50% decrease in $przrnd$.
+
+$\beta_3$ = 0.32, where a one standard deviation increase in $pctgrn$ is associated with approximately at 32% increase in $przrnd$.
+
 The results indicate that both `rounds` and `pctgrn` positively influence prize money. Specifically, for each additional round played, the log of prize money increases by 0.5, suggesting that players who compete in more rounds, tend to earn higher prize money per round. Similarly, hitting more greens leads to a 0.3 increase in the log of prize money per percentage point improvement. This highlights the importance of accuracy in reaching the green within the expected number of strokes, which is a key indicator of performance.
 
 On the other hand, `aveputt` has a negative impact on prize money, with a decrease of 0.2 in the log of prize money for each additional putt per round. This suggests that poor putting performance (requiring more putts) negatively affects a golfer's earnings, reinforcing the importance of putting efficiency in determining success. Overall, the model provides insights into how these performance metrics contribute to a golfer’s financial success, with putting and greens-in-regulation being particularly influential factors. The standard deviation of the residuals (sigma = 0.5) indicates that, while the model explains a significant portion of the variance, there is still some unexplained variability in prize money, likely due to other factors not included in the model.
