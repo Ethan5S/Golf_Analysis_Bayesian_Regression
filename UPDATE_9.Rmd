@@ -299,7 +299,7 @@ $\beta_0$ = 7.84, which is the expected value of log(przrnd) where all rounds, a
 
 $\beta_1$ = 0.50, where a one standard deviation increase in $rounds$ is associated with approximately at 50% increase in $przrnd$.
 
-$\beta_2$ = -0.25, where a one standard deviation increase in $aveputt$ is associated with approximately at 50% decrease in $przrnd$.
+$\beta_2$ = -0.25, where a one standard deviation increase in $aveputt$ is associated with approximately at 25% decrease in $przrnd$.
 
 $\beta_3$ = 0.32, where a one standard deviation increase in $pctgrn$ is associated with approximately at 32% increase in $przrnd$.
 
